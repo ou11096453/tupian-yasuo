@@ -15,7 +15,7 @@ function createSnack(
   message: string,
   options: SnackOptions,
 ): [Element, Promise<string>] {
-  const { timeout = 0, actions = ['dismiss'] } = options;
+  const { timeout = 0, actions = ['关闭'] } = options;
 
   const el = document.createElement('div');
   el.className = style.snackbar;
@@ -99,3 +99,4 @@ export default class SnackBarElement extends HTMLEl {
 }
 
 if (!__PRERENDER__) customElements.define('snack-bar', SnackBarElement);
+

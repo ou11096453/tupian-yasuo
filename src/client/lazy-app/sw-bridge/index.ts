@@ -68,7 +68,7 @@ export async function offliner(showSnack: SnackBarElement['showSnackbar']) {
   navigator.serviceWorker.addEventListener('controllerchange', async () => {
     // Is it the first install?
     if (!hasController) {
-      showSnack('Ready to work offline', { timeout: 5000 });
+      showSnack('已可离线使用', { timeout: 5000 });
       return;
     }
 
@@ -109,3 +109,4 @@ export async function mainAppLoaded() {
   if (!serviceWorker) return; // Service worker not installing yet.
   serviceWorker.postMessage('cache-all');
 }
+

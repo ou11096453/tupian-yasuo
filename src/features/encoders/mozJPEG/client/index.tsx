@@ -114,7 +114,7 @@ export class Options extends Component<Props, State> {
             value={options.quality}
             onInput={this.onChange}
           >
-            Quality:
+            质量：
           </Range>
         </div>
         <label class={style.optionReveal}>
@@ -122,7 +122,7 @@ export class Options extends Component<Props, State> {
             checked={showAdvanced}
             onChange={linkState(this, 'showAdvanced')}
           />
-          Advanced settings
+          高级设置
         </label>
         <Expander>
           {showAdvanced ? (
@@ -298,3 +298,4 @@ export class Options extends Component<Props, State> {
     );
   }
 }
+

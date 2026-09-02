@@ -2,55 +2,11 @@ import { h, Component } from 'preact';
 
 import { linkRef } from 'shared/prerendered-app/util';
 import '../../custom-els/loading-spinner';
-import logo from 'url:./imgs/logo.svg';
-import githubLogo from 'url:./imgs/github-logo.svg';
-import largePhoto from 'url:./imgs/demos/demo-large-photo.jpg';
-import artwork from 'url:./imgs/demos/demo-artwork.jpg';
-import deviceScreen from 'url:./imgs/demos/demo-device-screen.png';
-import largePhotoIcon from 'url:./imgs/demos/icon-demo-large-photo.jpg';
-import artworkIcon from 'url:./imgs/demos/icon-demo-artwork.jpg';
-import deviceScreenIcon from 'url:./imgs/demos/icon-demo-device-screen.jpg';
-import smallSectionAsset from 'url:./imgs/info-content/small.svg';
-import simpleSectionAsset from 'url:./imgs/info-content/simple.svg';
-import secureSectionAsset from 'url:./imgs/info-content/secure.svg';
-import logoIcon from 'url:./imgs/demos/icon-demo-logo.png';
 import logoWithText from 'data-url-text:./imgs/logo-with-text.svg';
 import * as style from './style.css';
 import type SnackBarElement from 'shared/custom-els/snack-bar';
 import 'shared/custom-els/snack-bar';
 import { startBlobs } from './blob-anim/meta';
-import SlideOnScroll from './SlideOnScroll';
-
-const demos = [
-  {
-    description: '大照片',
-    size: '2.8MB',
-    filename: 'photo.jpg',
-    url: largePhoto,
-    iconUrl: largePhotoIcon,
-  },
-  {
-    description: '艺术图',
-    size: '2.9MB',
-    filename: 'art.jpg',
-    url: artwork,
-    iconUrl: artworkIcon,
-  },
-  {
-    description: '设备屏幕',
-    size: '1.6MB',
-    filename: 'pixel3.png',
-    url: deviceScreen,
-    iconUrl: deviceScreenIcon,
-  },
-  {
-    description: 'SVG 图标',
-    size: '13KB',
-    filename: 'squoosh.svg',
-    url: logo,
-    iconUrl: logoIcon,
-  },
-] as const;
 
 const blobAnimImport =
   !__PRERENDER__ && matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -74,7 +30,6 @@ interface Props {
   showSnack?: SnackBarElement['showSnackbar'];
 }
 interface State {
-  fetchingDemoIndex?: number;
   beforeInstallEvent?: BeforeInstallPromptEvent;
   showBlobSVG: boolean;
 }
@@ -88,13 +43,10 @@ export default class Intro extends Component<Props, State> {
   private installingViaButton = false;
 
   componentDidMount() {
-    // Listen for beforeinstallprompt events, indicating Squoosh is installable.
     window.addEventListener(
       'beforeinstallprompt',
       this.onBeforeInstallPromptEvent,
     );
-
-    // Listen for the appinstalled event, indicating Squoosh has been installed.
     window.addEventListener('appinstalled', this.onAppInstalled);
 
     if (blobAnimImport) {
@@ -133,108 +85,53 @@ export default class Intro extends Component<Props, State> {
     this.fileInput!.click();
   };
 
-  private onDemoClick = async (index: number, event: Event) => {
-    try {
-      this.setState({ fetchingDemoIndex: index });
-      const demo = demos[index];
-      const blob = await fetch(demo.url).then((r) => r.blob());
-      const file = new File([blob], demo.filename, { type: blob.type });
-      this.props.onFile!([file]);
-    } catch (err) {
-      this.setState({ fetchingDemoIndex: undefined });
-      this.props.showSnack!("无法获取示例图片");
-    }
-  };
-
   private onBeforeInstallPromptEvent = (event: BeforeInstallPromptEvent) => {
-    // Don't show the mini-infobar on mobile
     event.preventDefault();
-
-    // Save the beforeinstallprompt event so it can be called later.
     this.setState({ beforeInstallEvent: event });
-
-    // Log the event.
-    const gaEventInfo = {
-      eventCategory: 'pwa-install',
-      eventAction: 'promo-shown',
-      nonInteraction: true,
-    };
-    ga('send', 'event', gaEventInfo);
   };
 
-  private onInstallClick = async (event: Event) => {
-    // Get the deferred beforeinstallprompt event
+  private onInstallClick = async () => {
     const beforeInstallEvent = this.state.beforeInstallEvent;
-    // If there's no deferred prompt, bail.
     if (!beforeInstallEvent) return;
-
     this.installingViaButton = true;
-
-    // Show the browser install prompt
     beforeInstallEvent.prompt();
-
-    // Wait for the user to accept or dismiss the install prompt
     const { outcome } = await beforeInstallEvent.userChoice;
-    // Send the analytics data
-    const gaEventInfo = {
-      eventCategory: 'pwa-install',
-      eventAction: 'promo-clicked',
-      eventLabel: installButtonSource,
-      eventValue: outcome === 'accepted' ? 1 : 0,
-    };
-    ga('send', 'event', gaEventInfo);
-
-    // If the prompt was dismissed, we aren't going to install via the button.
     if (outcome === 'dismissed') {
       this.installingViaButton = false;
     }
   };
 
   private onAppInstalled = () => {
-    // We don't need the install button, if it's shown
     this.setState({ beforeInstallEvent: undefined });
-
-    // Don't log analytics if page is not visible
-    if (document.hidden) return;
-
-    // Try to get the install, if it's not set, use 'browser'
-    const source = this.installingViaButton ? installButtonSource : 'browser';
-    ga('send', 'event', 'pwa-install', 'installed', source);
-
-    // Clear the install method property
-    this.installingViaButton = false;
   };
 
   private onPasteClick = async () => {
     let clipboardItems: ClipboardItem[];
-
     try {
       clipboardItems = await navigator.clipboard.read();
     } catch (err) {
-      this.props.showSnack!(`没有权限访问剪贴板`);
+      this.props.showSnack!('没有权限访问剪贴板');
       return;
     }
-
     const blob = await getImageClipboardItem(clipboardItems);
-
     if (!blob) {
-      this.props.showSnack!(`剪贴板中没有图片`);
+      this.props.showSnack!('剪贴板中没有图片');
       return;
     }
-
     this.props.onFile!([new File([blob], 'image.unknown')]);
   };
 
   render(
-    {}: Props,
-    { fetchingDemoIndex, beforeInstallEvent, showBlobSVG }: State,
+    {},
+    { beforeInstallEvent, showBlobSVG }: State,
   ) {
     return (
       <div class={style.intro}>
         <input
           class={style.hide}
           ref={linkRef(this, 'fileInput')}
-          type="file" multiple
+          type="file"
+          multiple
           onChange={this.onFileChange}
         />
         <div class={style.main}>
@@ -248,7 +145,7 @@ export default class Intro extends Component<Props, State> {
             <img
               class={style.logo}
               src={logoWithText}
-              alt="Squoosh"
+              alt="图片压缩"
               width="539"
               height="162"
             />
@@ -301,160 +198,6 @@ export default class Intro extends Component<Props, State> {
             </div>
           </div>
         </div>
-        <div class={style.demosContainer}>
-          <svg viewBox="0 0 1920 140" class={style.topWave}>
-            <path
-              d="M1920 0l-107 28c-106 29-320 85-533 93-213 7-427-36-640-50s-427 0-533 7L0 85v171h1920z"
-              class={style.subWave}
-            />
-            <path
-              d="M0 129l64-26c64-27 192-81 320-75 128 5 256 69 384 64 128-6 256-80 384-91s256 43 384 70c128 26 256 26 320 26h64v96H0z"
-              class={style.mainWave}
-            />
-          </svg>
-          <div class={style.contentPadding}>
-            <p class={style.demoTitle}>
-              或者 <strong>试试这些</strong>：
-            </p>
-            <ul class={style.demos}>
-              {demos.map((demo, i) => (
-                <li>
-                  <button
-                    class="unbutton"
-                    onClick={(event) => this.onDemoClick(i, event)}
-                  >
-                    <div class={style.demoContainer}>
-                      <div class={style.demoIconContainer}>
-                        <img
-                          class={style.demoIcon}
-                          src={demo.iconUrl}
-                          alt={demo.description}
-                        />
-                        {fetchingDemoIndex === i && (
-                          <div class={style.demoLoader}>
-                            <loading-spinner />
-                          </div>
-                        )}
-                      </div>
-                      <div class={style.demoSize}>{demo.size}</div>
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        <div class={style.bottomWave}>
-          <svg viewBox="0 0 1920 79" class={style.topWave}>
-            <path
-              d="M0 59l64-11c64-11 192-34 320-43s256-5 384 4 256 23 384 34 256 21 384 14 256-30 320-41l64-11v94H0z"
-              class={style.infoWave}
-            />
-          </svg>
-        </div>
-
-        <section class={style.info}>
-          <div class={style.infoContainer}>
-            <SlideOnScroll>
-              <div class={style.infoContent}>
-                <div class={style.infoTextWrapper}>
-                  <h2 class={style.infoTitle}>更小</h2>
-                  <p class={style.infoCaption}>
-                    更小的图片意味着更快的加载速度。图片压缩可以在保持
-                    高质量的同时减少文件体积。
-                  </p>
-                </div>
-                <div class={style.infoImgWrapper}>
-                  <img
-                    class={style.infoImg}
-                    src={smallSectionAsset}
-                    alt="1.4MB 大图缩小为 80KB 小图的轮廓示意"
-                    width="536"
-                    height="522"
-                  />
-                </div>
-              </div>
-            </SlideOnScroll>
-          </div>
-        </section>
-
-        <section class={style.info}>
-          <div class={style.infoContainer}>
-            <SlideOnScroll>
-              <div class={style.infoContent}>
-                <div class={style.infoTextWrapper}>
-                  <h2 class={style.infoTitle}>简单</h2>
-                  <p class={style.infoCaption}>
-                    打开图片，对比差异，即刻保存。想要更小？调整设置可获得更小的文件。
-                  </p>
-                </div>
-                <div class={style.infoImgWrapper}>
-                  <img
-                    class={style.infoImg}
-                    src={simpleSectionAsset}
-                    alt="多张压缩图片的网格展示，显示不同选项"
-                    width="538"
-                    height="384"
-                  />
-                </div>
-              </div>
-            </SlideOnScroll>
-          </div>
-        </section>
-
-        <section class={style.info}>
-          <div class={style.infoContainer}>
-            <SlideOnScroll>
-              <div class={style.infoContent}>
-                <div class={style.infoTextWrapper}>
-                  <h2 class={style.infoTitle}>安全</h2>
-                  <p class={style.infoCaption}>
-                    担心隐私？图片绝不会离开您的设备，所有处理都在本地完成。
-
-                  </p>
-                </div>
-                <div class={style.infoImgWrapper}>
-                  <img
-                    class={style.infoImg}
-                    src={secureSectionAsset}
-                    alt="带禁止符号的云朵轮廓示意"
-                    width="498"
-                    height="333"
-                  />
-                </div>
-              </div>
-            </SlideOnScroll>
-          </div>
-        </section>
-
-        <footer class={style.footer}>
-          <div class={style.footerContainer}>
-            <svg viewBox="0 0 1920 79" class={style.topWave}>
-              <path
-                d="M0 59l64-11c64-11 192-34 320-43s256-5 384 4 256 23 384 34 256 21 384 14 256-30 320-41l64-11v94H0z"
-                class={style.footerWave}
-              />
-            </svg>
-            <div class={style.footerPadding}>
-              <footer class={style.footerItems}>
-                <a
-                  class={style.footerLink}
-                  href="https://github.com/GoogleChromeLabs/squoosh/blob/dev/README.md#privacy"
-                >
-                  隐私
-                </a>
-                <a
-                  class={style.footerLinkWithLogo}
-                  href="https://github.com/GoogleChromeLabs/squoosh"
-                >
-                  <img src={githubLogo} alt="" width="10" height="10" />
-                  GitHub 源码
-                </a>
-              </footer>
-            </div>
-          </div>
-        </footer>
         {beforeInstallEvent && (
           <button class={style.installBtn} onClick={this.onInstallClick}>
             安装
@@ -464,16 +207,3 @@ export default class Intro extends Component<Props, State> {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

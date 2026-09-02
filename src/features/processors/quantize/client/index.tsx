@@ -75,7 +75,7 @@ export class Options extends Component<Props, State> {
                 value={options.maxNumColors}
                 onInput={this.onChange}
               >
-                Colors:
+                颜色数：
               </Range>
             </div>
           )}
@@ -89,10 +89,12 @@ export class Options extends Component<Props, State> {
             value={options.dither}
             onInput={this.onChange}
           >
-            Dithering:
+            抖动：
           </Range>
         </div>
       </form>
     );
   }
 }
+
+

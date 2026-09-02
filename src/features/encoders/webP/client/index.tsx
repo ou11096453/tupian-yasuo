@@ -37,7 +37,7 @@ interface State {
   showAdvanced: boolean;
 }
 
-// From kLosslessPresets in config_enc.c
+// From k无损Presets in config_enc.c
 // The format is [method, quality].
 const losslessPresets: [number, number][] = [
   [0, 0],
@@ -53,7 +53,7 @@ const losslessPresets: [number, number][] = [
 ];
 const losslessPresetDefault = 6;
 
-function determineLosslessQuality(quality: number, method: number): number {
+function determine无损Quality(quality: number, method: number): number {
   const index = losslessPresets.findIndex(
     ([presetMethod, presetQuality]) =>
       presetMethod === method && presetQuality === quality,
@@ -77,7 +77,7 @@ export class Options extends Component<Props, State> {
     const { options } = this.props;
     const losslessPresetValue = inputFieldValueAsNumber(
       form.lossless_preset,
-      determineLosslessQuality(options.quality, options.method),
+      determine无损Quality(options.quality, options.method),
     );
 
     const newOptions: EncodeOptions = {
@@ -163,10 +163,10 @@ export class Options extends Component<Props, State> {
             name="lossless_preset"
             min="0"
             max="9"
-            value={determineLosslessQuality(options.quality, options.method)}
+            value={determine无损Quality(options.quality, options.method)}
             onInput={this.onChange}
           >
-            Effort:
+            压缩等级：
           </Range>
         </div>
         <div class={style.optionOneCell}>
@@ -210,7 +210,7 @@ export class Options extends Component<Props, State> {
             value={options.method}
             onInput={this.onChange}
           >
-            Effort:
+            压缩等级：
           </Range>
         </div>
         <div class={style.optionOneCell}>
@@ -222,7 +222,7 @@ export class Options extends Component<Props, State> {
             value={options.quality}
             onInput={this.onChange}
           >
-            Quality:
+            质量：
           </Range>
         </div>
         <label class={style.optionReveal}>
@@ -230,7 +230,7 @@ export class Options extends Component<Props, State> {
             checked={showAdvanced}
             onChange={linkState(this, 'showAdvanced')}
           />
-          Advanced settings
+          高级设置
         </label>
         <Expander>
           {showAdvanced ? (
@@ -384,7 +384,7 @@ export class Options extends Component<Props, State> {
     return (
       <form class={style.optionsSection} onSubmit={preventDefault}>
         <label class={style.optionToggle}>
-          Lossless
+          无损
           <Checkbox
             name="lossless"
             checked={!!options.lossless}
@@ -406,3 +406,4 @@ export class Options extends Component<Props, State> {
     );
   }
 }
+

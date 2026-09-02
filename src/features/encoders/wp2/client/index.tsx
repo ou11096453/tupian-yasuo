@@ -156,7 +156,7 @@ export class Options extends Component<Props, State> {
     return (
       <form class={style.optionsSection} onSubmit={preventDefault}>
         <label class={style.optionToggle}>
-          Lossless
+          无损
           <Checkbox
             checked={lossless}
             onChange={this._inputChange('lossless', 'boolean')}
@@ -188,7 +188,7 @@ export class Options extends Component<Props, State> {
                   value={quality}
                   onInput={this._inputChange('quality', 'number')}
                 >
-                  Quality:
+                  质量：
                 </Range>
               </div>
               <label class={style.optionToggle}>
@@ -208,7 +208,7 @@ export class Options extends Component<Props, State> {
                       value={alphaQuality}
                       onInput={this._inputChange('alphaQuality', 'number')}
                     >
-                      Alpha Quality:
+                      Alpha 质量：
                     </Range>
                   </div>
                 )}
@@ -218,7 +218,7 @@ export class Options extends Component<Props, State> {
                   checked={showAdvanced}
                   onChange={linkState(this, 'showAdvanced')}
                 />
-                Advanced settings
+                高级设置
               </label>
               <Expander>
                 {showAdvanced && (
@@ -303,10 +303,12 @@ export class Options extends Component<Props, State> {
             value={effort}
             onInput={this._inputChange('effort', 'number')}
           >
-            Effort:
+            压缩等级：
           </Range>
         </div>
       </form>
     );
   }
 }
+
+

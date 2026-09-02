@@ -54,10 +54,11 @@ export class Options extends Component<Props, {}> {
             value={options.level}
             onInput={this.onChange}
           >
-            Effort:
+            压缩等级：
           </Range>
         </div>
       </form>
     );
   }
 }
+
