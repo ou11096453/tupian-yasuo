@@ -18,35 +18,70 @@ interface BatchItem {
   downloadUrl?: string;
 }
 
+type OutputFormat = 'image/jpeg' | 'image/webp' | 'image/png';
+
 interface State {
+  format: OutputFormat;
   quality: number;
+  maxWidth: number;
+  useResize: boolean;
   items: BatchItem[];
   processing: boolean;
   done: boolean;
+  showSettings: boolean;
 }
+
+const formatNames: Record<OutputFormat, string> = {
+  'image/jpeg': 'JPEG',
+  'image/webp': 'WebP',
+  'image/png': 'PNG',
+};
+
+const formatExts: Record<OutputFormat, string> = {
+  'image/jpeg': '.jpg',
+  'image/webp': '.webp',
+  'image/png': '.png',
+};
 
 export default class Batch extends Component<Props, State> {
   state: State = {
+    format: 'image/jpeg',
     quality: 75,
+    maxWidth: 1920,
+    useResize: false,
     items: this.props.files.map((file) => ({
       file,
       processing: false,
     })),
     processing: false,
     done: false,
+    showSettings: false,
   };
 
   private async compressFile(
     file: File,
+    format: OutputFormat,
     quality: number,
+    maxWidth: number,
+    useResize: boolean,
   ): Promise<File | undefined> {
     const bitmap = await createImageBitmap(file);
+    let drawW = bitmap.width;
+    let drawH = bitmap.height;
+
+    if (useResize && drawW > maxWidth) {
+      const ratio = maxWidth / drawW;
+      drawW = maxWidth;
+      drawH = Math.round(bitmap.height * ratio);
+    }
+
     const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
+    canvas.width = drawW;
+    canvas.height = drawH;
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('无法创建画布上下文');
-    ctx.drawImage(bitmap, 0, 0);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(bitmap, 0, 0, drawW, drawH);
     bitmap.close();
 
     return new Promise<File>((resolve, reject) => {
@@ -56,30 +91,49 @@ export default class Batch extends Component<Props, State> {
             reject(new Error('压缩失败'));
             return;
           }
-          const name = file.name.replace(/\.[^.]+$/, '') + '.jpg';
-          resolve(new File([blob], name, { type: 'image/jpeg' }));
+          const ext = formatExts[format];
+          const name = file.name.replace(/\.[^.]+$/, '') + ext;
+          resolve(new File([blob], name, { type: format }));
         },
-        'image/jpeg',
-        quality / 100,
+        format,
+        format === 'image/png' ? undefined : quality / 100,
       );
     });
   }
 
+  private onFormatChange = (event: Event) => {
+    this.setState({ format: (event.target as HTMLSelectElement).value as OutputFormat });
+  };
+
   private onQualityChange = (event: Event) => {
-    const value = (event.target as HTMLInputElement).valueAsNumber;
-    this.setState({ quality: value });
+    this.setState({ quality: (event.target as HTMLInputElement).valueAsNumber });
+  };
+
+  private onMaxWidthChange = (event: Event) => {
+    this.setState({ maxWidth: (event.target as HTMLInputElement).valueAsNumber || 1920 });
+  };
+
+  private onResizeToggle = () => {
+    this.setState({ useResize: !this.state.useResize });
+  };
+
+  private toggleSettings = () => {
+    this.setState({ showSettings: !this.state.showSettings });
   };
 
   private onCompressAll = async () => {
     this.setState({ processing: true });
-    const { quality, items } = this.state;
+    const { format, quality, maxWidth, useResize, items } = this.state;
     const newItems = [...items];
 
     for (let i = 0; i < newItems.length; i++) {
       newItems[i] = { ...newItems[i], processing: true };
       this.setState({ items: [...newItems] });
       try {
-        const compressed = await this.compressFile(newItems[i].file, quality);
+        const compressed = await this.compressFile(
+          newItems[i].file, format, quality, maxWidth, useResize,
+        );
+        if (newItems[i].downloadUrl) URL.revokeObjectURL(newItems[i].downloadUrl!);
         newItems[i] = {
           ...newItems[i],
           compressed,
@@ -108,13 +162,13 @@ export default class Batch extends Component<Props, State> {
       const link = document.createElement('a');
       link.href = item.downloadUrl;
       link.download = item.compressed.name;
-      setTimeout(() => link.click(), i * 200);
+      setTimeout(() => link.click(), i * 300);
     });
   };
 
   render(
     {}: Props,
-    { quality, items, processing, done }: State,
+    { format, quality, maxWidth, useResize, items, processing, done, showSettings }: State,
   ) {
     const totalOriginal = items.reduce((sum, i) => sum + i.file.size, 0);
     const totalCompressed = items.reduce(
@@ -125,6 +179,7 @@ export default class Batch extends Component<Props, State> {
       totalOriginal > 0 && totalCompressed > 0
         ? Math.round((totalCompressed / totalOriginal) * 100)
         : 0;
+    const qualityDisabled = format === 'image/png';
 
     return (
       <div class={style.batch}>
@@ -134,45 +189,96 @@ export default class Batch extends Component<Props, State> {
           </button>
           <h2>批量压缩</h2>
           <span class={style.count}>{items.length} 张图片</span>
+          <button class={style.settingsToggle} onClick={this.toggleSettings}>
+            {showSettings ? '收起设置 ▲' : '压缩设置 ▼'}
+          </button>
         </div>
 
-        <div class={style.controls}>
-          <label class={style.qualityLabel}>
-            压缩质量: {quality}%
-            <input
-              type="range"
-              min="1"
-              max="100"
-              value={quality}
-              onInput={this.onQualityChange}
-              disabled={processing}
-            />
-          </label>
-          <div class={style.buttonGroup}>
-            <button
-              class={style.compressBtn}
-              onClick={this.onCompressAll}
-              disabled={processing || items.length === 0}
-            >
-              {processing ? '压缩中...' : '开始压缩'}
-            </button>
-            {done && (
-              <button
-                class={style.downloadAllBtn}
-                onClick={this.onDownloadAll}
-                disabled={processing}
-              >
-                全部下载
-              </button>
-            )}
+        {showSettings && (
+          <div class={style.controls}>
+            <div class={style.settingsGrid}>
+              <label class={style.settingItem}>
+                <span class={style.settingLabel}>输出格式</span>
+                <select
+                  class={style.select}
+                  value={format}
+                  onChange={this.onFormatChange}
+                  disabled={processing}
+                >
+                  <option value="image/jpeg">JPEG（体积小）</option>
+                  <option value="image/webp">WebP（更小）</option>
+                  <option value="image/png">PNG（无损）</option>
+                </select>
+              </label>
+
+              <label class={`${style.settingItem} ${qualityDisabled ? style.disabled : ''}`}>
+                <span class={style.settingLabel}>
+                  压缩质量: <strong>{quality}%</strong>
+                </span>
+                <input
+                  type="range"
+                  min="1"
+                  max="100"
+                  value={quality}
+                  onInput={this.onQualityChange}
+                  disabled={processing || qualityDisabled}
+                />
+              </label>
+
+              <div class={style.settingItem}>
+                <label class={style.toggleLabel}>
+                  <input
+                    type="checkbox"
+                    checked={useResize}
+                    onChange={this.onResizeToggle}
+                    disabled={processing}
+                  />
+                  <span class={style.settingLabel}>限制最大宽度</span>
+                </label>
+                {useResize && (
+                  <div class={style.resizeInput}>
+                    <input
+                      type="number"
+                      min="100"
+                      max="10000"
+                      step="10"
+                      value={maxWidth}
+                      onInput={this.onMaxWidthChange}
+                      disabled={processing}
+                      class={style.numberInput}
+                    />
+                    <span class={style.unit}>px</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
+        )}
+
+        <div class={style.actionBar}>
+          <button
+            class={style.compressBtn}
+            onClick={this.onCompressAll}
+            disabled={processing || items.length === 0}
+          >
+            {processing ? '压缩中...' : done ? '重新压缩' : '开始压缩'}
+          </button>
+          {done && (
+            <button
+              class={style.downloadAllBtn}
+              onClick={this.onDownloadAll}
+              disabled={processing}
+            >
+              全部下载
+            </button>
+          )}
         </div>
 
         {totalCompressed > 0 && (
           <div class={style.summary}>
-            总大小: {prettyBytes(totalOriginal).value}
-            {prettyBytes(totalOriginal).unit} → {prettyBytes(totalCompressed).value}
-            {prettyBytes(totalCompressed).unit} ({percent}%)
+            {prettyBytes(totalOriginal).value}{prettyBytes(totalOriginal).unit}
+            → {prettyBytes(totalCompressed).value}{prettyBytes(totalCompressed).unit}
+            <span class={style.summaryPct}>（节省 {100 - percent}%）</span>
           </div>
         )}
 
