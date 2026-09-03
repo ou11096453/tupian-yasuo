@@ -119,7 +119,7 @@ export default class Intro extends Component<Props, State> {
             <img
               class={style.logo}
               src={logoWithText}
-              alt="图片压缩"
+              alt="在线图片压缩"
               width="539"
               height="162"
             />
@@ -153,3 +153,4 @@ export default class Intro extends Component<Props, State> {
     );
   }
 }
+

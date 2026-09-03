@@ -27,14 +27,14 @@ interface Props {}
 const Index: FunctionalComponent<Props> = () => (
   <html lang="zh-CN">
     <head>
-      <title>图片压缩</title>
+      <title>在线图片压缩</title>
       <meta
         name="description"
-        content="图片压缩工具 — 在浏览器中压缩、对比和优化图片。"
+        content="在线图片压缩 — 在浏览器中压缩、对比和优化图片，支持批量处理。"
       />
       <meta name="twitter:card" content="summary" />
       <meta name="twitter:site" content="@SquooshApp" />
-      <meta property="og:title" content="图片压缩" />
+      <meta property="og:title" content="在线图片压缩" />
       <meta property="og:type" content="website" />
       <meta property="og:image" content={`${siteOrigin}${ogImage}`} />
       <meta
@@ -50,7 +50,7 @@ const Index: FunctionalComponent<Props> = () => (
       />
       <meta
         name="og:description"
-        content="图片压缩工具 — 在浏览器中压缩、对比和优化图片。"
+        content="在线图片压缩 — 在浏览器中压缩、对比和优化图片，支持批量处理。"
       />
       <meta
         name="viewport"
@@ -109,6 +109,7 @@ const Index: FunctionalComponent<Props> = () => (
 );
 
 export default Index;
+
 
 
 

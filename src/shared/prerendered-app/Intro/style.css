@@ -38,21 +38,22 @@
 
 .main {
   min-height: 100vh;
-  display: grid;
-  grid-template-rows: max-content 1fr;
-  justify-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
   position: relative;
   z-index: 1;
+  padding-top: 80px;
 }
 
 .logo-container {
-  margin: 3.5rem 0 0;
   position: absolute;
-  top: 0;
+  top: 32px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
+  margin: 0;
 }
 
 .logo {
@@ -66,12 +67,8 @@
   color: #e8eaf6;
   font-style: italic;
   font-size: 1.2rem;
-  align-self: center;
-  justify-self: center;
-  width: 340px;
-  height: 340px;
-  display: grid;
-  justify-items: center;
+  display: flex;
+  justify-content: center;
   align-items: center;
 }
 
@@ -172,3 +169,4 @@
 .install-btn:hover {
   background: rgba(129, 140, 248, 0.25);
 }
+
