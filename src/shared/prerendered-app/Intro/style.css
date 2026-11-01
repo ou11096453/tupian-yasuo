@@ -1,11 +1,12 @@
 .intro {
-  --intro-ground: #edf0f2;
+  --intro-ground: #d8e5dd;
+  --intro-canvas: #e7efe9;
   --intro-surface: #fff;
-  --intro-well: #f7f9fa;
-  --intro-ink: #25282c;
-  --intro-muted: #5e656b;
-  --intro-edge: #dfe4e7;
-  --intro-control: #a5afb6;
+  --intro-well: #f7faf8;
+  --intro-ink: #25332b;
+  --intro-muted: #55645b;
+  --intro-edge: #dce6df;
+  --intro-control: #99b1a2;
   --intro-accent: #bd2458;
   --intro-hover: #a81c4c;
   --intro-focus: #167a72;
@@ -59,7 +60,7 @@
     max(40px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
   box-sizing: border-box;
   margin: 0 8px 8px;
-  background: var(--intro-surface);
+  background: var(--intro-canvas);
   min-height: 520px;
 }
 .workspace {

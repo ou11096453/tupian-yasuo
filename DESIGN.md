@@ -2,13 +2,14 @@
 name: Online Image Compression
 description: Homepage upload workspace, documented from the implementation
 colors:
-  ground: '#edf0f2'
+  ground: '#d8e5dd'
+  canvas: '#e7efe9'
   surface: '#ffffff'
-  well: '#f7f9fa'
-  ink: '#25282c'
-  muted: '#5e656b'
-  edge: '#dfe4e7'
-  control: '#a5afb6'
+  well: '#f7faf8'
+  ink: '#25332b'
+  muted: '#55645b'
+  edge: '#dce6df'
+  control: '#99b1a2'
   accent: '#bd2458'
   accent-hover: '#a81c4c'
   focus: '#167a72'
@@ -53,7 +54,8 @@ The existing compression logo and magenta action color remain the identity.
 
 ## Colors
 
-Neutral framing separates the header, white work surface and image selection well.
+Soft sage framing separates the header, mist-green canvas and light image selection well.
+White is reserved for example actions, installation and primary-action text.
 Magenta identifies the primary action; teal identifies keyboard focus.
 Source of truth: `src/shared/prerendered-app/Intro/style.css`.
 

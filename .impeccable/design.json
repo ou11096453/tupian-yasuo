@@ -30,14 +30,14 @@
       "kind": "button",
       "description": "Neutral image example action with a reserved thumbnail slot.",
       "html": "<button class=\"ds-example\">Artwork</button>",
-      "css": ".ds-example{background:#fff;color:#25282c;border:1px solid #dfe4e7;border-radius:6px;font:14px Arial,sans-serif;padding:12px;min-height:80px;cursor:pointer}.ds-example:hover{border-color:#a5afb6}.ds-example:active{border-color:#167a72}.ds-example:focus-visible{outline:3px solid #167a72;outline-offset:4px}.ds-example:disabled{background:#f7f9fa;color:#5e656b;cursor:wait}"
+      "css": ".ds-example{background:#fff;color:#25332b;border:1px solid #dce6df;border-radius:6px;font:14px Arial,sans-serif;padding:12px;min-height:80px;cursor:pointer}.ds-example:hover{border-color:#99b1a2}.ds-example:active{border-color:#167a72}.ds-example:focus-visible{outline:3px solid #167a72;outline-offset:4px}.ds-example:disabled{background:#f7faf8;color:#55645b;cursor:wait}"
     },
     {
       "name": "Install Action",
       "kind": "button",
       "description": "Optional browser-provided installation command.",
       "html": "<button class=\"ds-install\">Install</button>",
-      "css": ".ds-install{background:#fff;color:#25282c;border:1px solid #a5afb6;border-radius:6px;font:16px Arial,sans-serif;padding:10px 16px;min-height:44px;cursor:pointer}.ds-install:hover,.ds-install:active{background:#f7f9fa}.ds-install:focus-visible{outline:3px solid #167a72;outline-offset:4px}"
+      "css": ".ds-install{background:#fff;color:#25332b;border:1px solid #99b1a2;border-radius:6px;font:16px Arial,sans-serif;padding:10px 16px;min-height:44px;cursor:pointer}.ds-install:hover,.ds-install:active{background:#f7faf8}.ds-install:focus-visible{outline:3px solid #167a72;outline-offset:4px}"
     }
   ],
   "narrative": {
