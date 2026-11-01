@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-01T00:00:00+08:00",
+  "title": "Design System: Online Image Compression",
+  "extensions": {
+    "motion": [
+      {
+        "name": "control-feedback",
+        "value": "160ms ease-out",
+        "purpose": "Button and border state feedback, disabled under reduced motion."
+      }
+    ],
+    "breakpoints": [
+      { "name": "narrow", "value": "600px" },
+      { "name": "short-height", "value": "480px" }
+    ],
+    "shadows": []
+  },
+  "components": [
+    {
+      "name": "Primary Action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "File selection action, shown inside the clickable image well.",
+      "html": "<button class=\"ds-primary\">Select images</button>",
+      "css": ".ds-primary{background:#bd2458;color:#fff;border:1px solid #bd2458;border-radius:6px;font:600 16px Arial,sans-serif;padding:14px 28px;min-height:56px;cursor:pointer}.ds-primary:hover,.ds-primary:active{background:#a81c4c}.ds-primary:focus-visible{outline:3px solid #167a72;outline-offset:4px}"
+    },
+    {
+      "name": "Example Action",
+      "kind": "button",
+      "description": "Neutral image example action with a reserved thumbnail slot.",
+      "html": "<button class=\"ds-example\">Artwork</button>",
+      "css": ".ds-example{background:#fff;color:#25282c;border:1px solid #dfe4e7;border-radius:6px;font:14px Arial,sans-serif;padding:12px;min-height:80px;cursor:pointer}.ds-example:hover{border-color:#a5afb6}.ds-example:active{border-color:#167a72}.ds-example:focus-visible{outline:3px solid #167a72;outline-offset:4px}.ds-example:disabled{background:#f7f9fa;color:#5e656b;cursor:wait}"
+    },
+    {
+      "name": "Install Action",
+      "kind": "button",
+      "description": "Optional browser-provided installation command.",
+      "html": "<button class=\"ds-install\">Install</button>",
+      "css": ".ds-install{background:#fff;color:#25282c;border:1px solid #a5afb6;border-radius:6px;font:16px Arial,sans-serif;padding:10px 16px;min-height:44px;cursor:pointer}.ds-install:hover,.ds-install:active{background:#f7f9fa}.ds-install:focus-visible{outline:3px solid #167a72;outline-offset:4px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Image Workspace",
+    "overview": "This is an Operate surface: the first screen starts a real compression task. Scope is the homepage only; the existing editor and batch views retain their own controls. The existing compression logo and magenta action color remain the identity.",
+    "dos": [
+      "Do preserve single-image, batch and offline workflows.",
+      "Do reuse the project's actual image assets and native file picker."
+    ],
+    "donts": [
+      "Don't add clipboard controls or fabricated compression statistics.",
+      "Don't introduce decorative animation, floating sections or new dependencies."
+    ]
+  }
+}

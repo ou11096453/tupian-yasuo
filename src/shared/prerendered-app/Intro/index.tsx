@@ -1,26 +1,54 @@
 import { h, Component } from 'preact';
 
 import { linkRef } from 'shared/prerendered-app/util';
-import '../../custom-els/loading-spinner';
-import logoWithText from 'data-url-text:./imgs/logo.svg';
+import logo from 'data-url-text:./imgs/logo.svg';
+import artworkURL from 'url:./imgs/demos/demo-artwork.jpg';
+import screenURL from 'url:./imgs/demos/demo-device-screen.png';
+import photoURL from 'url:./imgs/demos/demo-large-photo.jpg';
+import artworkPreview from 'data-url:./imgs/demos/icon-demo-artwork.jpg';
+import screenPreview from 'data-url:./imgs/demos/icon-demo-device-screen.jpg';
+import photoPreview from 'data-url:./imgs/demos/icon-demo-large-photo.jpg';
 import * as style from './style.css';
 import type SnackBarElement from 'shared/custom-els/snack-bar';
 import 'shared/custom-els/snack-bar';
 import { imageAccept, isImageFile } from 'shared/image-files';
 
-const installButtonSource = 'introInstallButton-Purple';
+const examples = [
+  {
+    label: '插画',
+    url: artworkURL,
+    preview: artworkPreview,
+    name: 'artwork.jpg',
+    type: 'image/jpeg',
+  },
+  {
+    label: '屏幕截图',
+    url: screenURL,
+    preview: screenPreview,
+    name: 'screen.png',
+    type: 'image/png',
+  },
+  {
+    label: '摄影',
+    url: photoURL,
+    preview: photoPreview,
+    name: 'photo.jpg',
+    type: 'image/jpeg',
+  },
+];
 interface Props {
   onFile?: (files: File[]) => void;
   showSnack?: SnackBarElement['showSnackbar'];
 }
 interface State {
   beforeInstallEvent?: BeforeInstallPromptEvent;
+  loadingExample?: string;
 }
 
 export default class Intro extends Component<Props, State> {
   state: State = {};
   private fileInput?: HTMLInputElement;
-  private installingViaButton = false;
+  private exampleRequest?: AbortController;
 
   componentDidMount() {
     window.addEventListener(
@@ -31,6 +59,7 @@ export default class Intro extends Component<Props, State> {
   }
 
   componentWillUnmount() {
+    this.exampleRequest?.abort();
     window.removeEventListener(
       'beforeinstallprompt',
       this.onBeforeInstallPromptEvent,
@@ -54,7 +83,37 @@ export default class Intro extends Component<Props, State> {
   };
 
   private onOpenClick = () => {
+    this.exampleRequest?.abort();
+    this.setState({ loadingExample: undefined });
     this.fileInput!.click();
+  };
+
+  private onExampleClick = async (example: typeof examples[number]) => {
+    this.exampleRequest?.abort();
+    const request = new AbortController();
+    this.exampleRequest = request;
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      request.abort();
+    }, 30000);
+    this.setState({ loadingExample: example.name });
+    try {
+      const response = await fetch(example.url, { signal: request.signal });
+      if (!response.ok) throw new Error('Example unavailable');
+      const data = await response.blob();
+      if (request.signal.aborted) return;
+      this.props.onFile?.([
+        new File([data], example.name, { type: example.type }),
+      ]);
+    } catch {
+      if (!request.signal.aborted || timedOut)
+        this.props.showSnack?.('示例图片加载失败，请重试或选择自己的图片');
+    } finally {
+      clearTimeout(timeout);
+      if (!request.signal.aborted || timedOut)
+        this.setState({ loadingExample: undefined });
+    }
   };
 
   private onBeforeInstallPromptEvent = (event: BeforeInstallPromptEvent) => {
@@ -65,19 +124,15 @@ export default class Intro extends Component<Props, State> {
   private onInstallClick = async () => {
     const beforeInstallEvent = this.state.beforeInstallEvent;
     if (!beforeInstallEvent) return;
-    this.installingViaButton = true;
     beforeInstallEvent.prompt();
-    const { outcome } = await beforeInstallEvent.userChoice;
-    if (outcome === 'dismissed') {
-      this.installingViaButton = false;
-    }
+    await beforeInstallEvent.userChoice;
   };
 
   private onAppInstalled = () => {
     this.setState({ beforeInstallEvent: undefined });
   };
 
-  render({}, { beforeInstallEvent }: State) {
+  render({}, { beforeInstallEvent, loadingExample }: State) {
     return (
       <div class={style.intro}>
         <input
@@ -86,40 +141,79 @@ export default class Intro extends Component<Props, State> {
           type="file"
           multiple
           accept={imageAccept}
+          aria-label="图片文件"
           onChange={this.onFileChange}
         />
-        <div class={style.main}>
+        <header class={style.header}>
           <h1 class={style.logoContainer}>
-            <img
-              class={style.logo}
-              src={logoWithText}
-              alt=""
-              width="81"
-              height="81"
-            />
+            <img class={style.logo} src={logo} alt="" width="40" height="40" />
             <span>在线图片压缩</span>
           </h1>
-          <div class={style.loadImg}>
-            <div class={style.loadImgContent}>
+          {beforeInstallEvent && (
+            <button class={style.installBtn} onClick={this.onInstallClick}>
+              安装
+            </button>
+          )}
+        </header>
+        <main class={style.main}>
+          <div class={style.workspace}>
+            <div class={style.loadImg}>
               <button
-                class={style.loadBtn}
+                class={style.loadImgContent}
                 onClick={this.onOpenClick}
                 aria-label="选择图片"
                 title="选择图片"
+                type="button"
+                aria-describedby="image-formats"
               >
-                <svg viewBox="0 0 24 24" class={style.loadIcon}>
-                  <path d="M19 7v3h-2V7h-3V5h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5a2 2 0 00-2 2v12c0 1.1.9 2 2 2h12a2 2 0 002-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z" />
-                </svg>
-                <span>选择图片</span>
+                <span class={style.loadBtn}>
+                  <svg
+                    viewBox="0 0 24 24"
+                    class={style.loadIcon}
+                    aria-hidden="true"
+                  >
+                    <path d="M19 7v3h-2V7h-3V5h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5a2 2 0 00-2 2v12c0 1.1.9 2 2 2h12a2 2 0 002-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z" />
+                  </svg>
+                  <span>选择图片</span>
+                </span>
+                <span id="image-formats" class={style.formats}>
+                  PNG / JPEG / WebP / AVIF / SVG
+                </span>
               </button>
             </div>
+            <section class={style.examples} aria-labelledby="example-title">
+              <h2 id="example-title">示例图片</h2>
+              <div class={style.exampleList}>
+                {examples.map((example) => (
+                  <button
+                    key={example.name}
+                    class={style.exampleBtn}
+                    type="button"
+                    onClick={() => this.onExampleClick(example)}
+                    disabled={!!loadingExample}
+                    aria-label={`压缩${example.label}示例`}
+                    aria-busy={loadingExample === example.name}
+                  >
+                    <img
+                      src={example.preview}
+                      alt=""
+                      width="200"
+                      height="200"
+                    />
+                    <span>
+                      {loadingExample === example.name
+                        ? '加载中'
+                        : example.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <span class={style.srOnly} role="status">
+                {loadingExample ? '正在加载示例图片' : ''}
+              </span>
+            </section>
           </div>
-        </div>
-        {beforeInstallEvent && (
-          <button class={style.installBtn} onClick={this.onInstallClick}>
-            安装
-          </button>
-        )}
+        </main>
       </div>
     );
   }

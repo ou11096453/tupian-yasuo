@@ -26,10 +26,10 @@
       border: 2px dashed #fff;
       background-color: rgba(0, 0, 0, 0.1);
       border-color: var(--pink);
-      border-radius: 10px;
+      border-radius: 8px;
       opacity: 0;
       transform: scale(0.95);
-      transition: all 200ms ease-in;
+      transition: all 200ms ease-out;
       transition-property: transform, opacity;
       pointer-events: none;
     }
