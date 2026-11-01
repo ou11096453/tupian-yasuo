@@ -30,6 +30,10 @@ export default class Results extends Component<Props, State> {
   /** The timeout ID between entering the loading state, and changing UI */
   private loadingTimeoutId: number = 0;
 
+  componentWillUnmount() {
+    clearTimeout(this.loadingTimeoutId);
+  }
+
   componentDidUpdate(prevProps: Props, prevState: State) {
     if (prevProps.loading && !this.props.loading) {
       // Just stopped loading
@@ -44,7 +48,16 @@ export default class Results extends Component<Props, State> {
     }
   }
 
-  private onDownload = () => {
+  private onDownload = (event: Event) => {
+    if (
+      this.props.loading ||
+      !this.props.source ||
+      !this.props.imageFile ||
+      !this.props.downloadUrl
+    ) {
+      event.preventDefault();
+      return;
+    }
     // GA can’t do floats. So we round to ints. We're deliberately rounding to nearest kilobyte to
     // avoid cases where exact image sizes leak something interesting about the user.
     const before = Math.round(this.props.source!.file.size / 1024);
@@ -59,7 +72,7 @@ export default class Results extends Component<Props, State> {
   };
 
   render(
-    { source, imageFile, downloadUrl, flipSide, typeLabel }: Props,
+    { loading, source, imageFile, downloadUrl, flipSide, typeLabel }: Props,
     { showLoadingState }: State,
   ) {
     const prettySize = imageFile && prettyBytes(imageFile.size);
@@ -120,10 +133,16 @@ export default class Results extends Component<Props, State> {
           </div>
         </div>
         <a
-          class={showLoadingState ? style.downloadDisable : style.download}
-          href={downloadUrl}
+          class={
+            loading || !source || !imageFile || !downloadUrl
+              ? style.downloadDisable
+              : style.download
+          }
+          href={loading ? undefined : downloadUrl}
           download={imageFile ? imageFile.name : ''}
           title="下载"
+          aria-disabled={loading || !source || !imageFile || !downloadUrl}
+          tabIndex={loading || !source || !imageFile || !downloadUrl ? -1 : 0}
           onClick={this.onDownload}
         >
           <svg class={style.downloadBlobs} viewBox="0 0 89.6 86.9">
@@ -140,4 +159,3 @@ export default class Results extends Component<Props, State> {
     );
   }
 }
-

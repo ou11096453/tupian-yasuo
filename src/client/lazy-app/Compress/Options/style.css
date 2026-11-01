@@ -1,5 +1,7 @@
 .options-scroller {
   --horizontal-padding: 15px;
+  min-width: 0;
+  width: 100%;
   border-radius: var(--scroller-radius);
   overflow: hidden;
 
@@ -91,6 +93,27 @@
   width: 100%;
   box-sizing: border-box;
   border-radius: 4px;
+}
+
+@media (max-width: 799px) {
+  .text-field,
+  .options-section select {
+    font-size: 16px;
+    min-height: 44px;
+  }
+  .title-and-buttons {
+    gap: 4px;
+  }
+  .title-button {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .option-text-first {
+    grid-template-columns: minmax(65px, 87px) minmax(0, 1fr);
+  }
 }
 
 .title-and-buttons {

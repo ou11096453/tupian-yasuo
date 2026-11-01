@@ -61,12 +61,20 @@ export function escapeStyleScriptContent(str: string): string {
  * Origin of the site, depending on the environment.
  */
 export const siteOrigin = (() => {
+  if (process.env.SITE_ORIGIN) {
+    const url = new URL(process.env.SITE_ORIGIN);
+    if (
+      !['https:', 'http:'].includes(url.protocol) ||
+      url.username ||
+      url.password
+    ) {
+      throw new Error(
+        'SITE_ORIGIN must be an HTTP(S) origin without credentials',
+      );
+    }
+    return url.origin;
+  }
   if (process.env.DEV_PORT) return `http://localhost:${process.env.DEV_PORT}`;
-  // https://docs.netlify.com/configure-builds/environment-variables/#build-metadata
-  if (process.env.CONTEXT === 'production') return 'https://squoosh.app';
   if (process.env.DEPLOY_PRIME_URL) return process.env.DEPLOY_PRIME_URL;
-  console.warn(
-    'Unable to determine site origin, defaulting to https://squoosh.app',
-  );
-  return 'https://squoosh.app';
+  return '';
 })();

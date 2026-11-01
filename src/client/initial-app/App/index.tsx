@@ -10,6 +10,7 @@ import 'add-css:./style.css';
 import 'file-drop-element';
 import 'shared/custom-els/snack-bar';
 import Intro from 'shared/prerendered-app/Intro';
+import { isImageFile } from 'shared/image-files';
 const batchPromise = import('client/lazy-app/Batch');
 import 'shared/custom-els/loading-spinner';
 
@@ -27,9 +28,11 @@ interface Props {}
 interface State {
   awaitingShareTarget: boolean;
   files: File[];
-  isEditorOpen: Boolean;
+  isEditorOpen: boolean;
   Compress?: typeof import('client/lazy-app/Compress').default;
   Batch?: typeof import('client/lazy-app/Batch').default;
+  compressError?: string;
+  batchError?: string;
 }
 
 export default class App extends Component<Props, State> {
@@ -53,6 +56,7 @@ export default class App extends Component<Props, State> {
         this.setState({ Compress: module.default });
       })
       .catch(() => {
+        this.setState({ compressError: '应用加载失败' });
         this.showSnack('应用加载失败');
       });
 
@@ -61,38 +65,56 @@ export default class App extends Component<Props, State> {
         this.setState({ Batch: module.default });
       })
       .catch(() => {
+        this.setState({ batchError: '批量组件加载失败' });
         this.showSnack('批量组件加载失败');
       });
 
-    swBridgePromise.then(async ({ offliner, getSharedImage }) => {
-      offliner(this.showSnack);
-      if (!this.state.awaitingShareTarget) return;
-      const file = await getSharedImage();
-      // Remove the ?share-target from the URL
-      history.replaceState('', '', '/');
-      this.openEditor();
-      this.setState({ files: [file], awaitingShareTarget: false });
-    });
-
-    // Since iOS 10, Apple tries to prevent disabling pinch-zoom. This is great in theory, but
-    // really breaks things on Squoosh, as you can easily end up zooming the UI when you mean to
-    // zoom the image. Once you've done this, it's really difficult to undo. Anyway, this seems to
-    // prevent it.
-    document.body.addEventListener('gesturestart', (event: any) => {
-      event.preventDefault();
-    });
+    swBridgePromise
+      .then(async ({ offliner, getSharedImage }) => {
+        offliner(this.showSnack);
+        if (!this.state.awaitingShareTarget) return;
+        const file = await getSharedImage();
+        // Remove the ?share-target from the URL
+        history.replaceState('', '', '/');
+        this.openEditor();
+        this.setState({ files: [file], awaitingShareTarget: false });
+      })
+      .catch(() => {
+        this.setState({ awaitingShareTarget: false });
+        this.showSnack('离线或分享功能暂时不可用');
+      });
 
     window.addEventListener('popstate', this.onPopState);
+    window.addEventListener('keydown', this.onKeyDown);
   }
+
+  componentWillUnmount() {
+    window.removeEventListener('popstate', this.onPopState);
+    window.removeEventListener('keydown', this.onKeyDown);
+  }
+
+  private onKeyDown = (event: KeyboardEvent) => {
+    if (
+      event.key === 'Escape' &&
+      this.state.isEditorOpen &&
+      !(
+        event.target instanceof HTMLElement &&
+        event.target.closest('input,select,textarea,[contenteditable]')
+      )
+    ) {
+      back();
+    }
+  };
 
   private onFileDrop = ({ files }: FileDropEvent) => {
     if (!files || files.length === 0) return;
     const fileList: File[] = [];
     for (let i = 0; i < files.length; i++) {
-      if (files[i].type.startsWith('image/')) {
+      if (isImageFile(files[i])) {
         fileList.push(files[i]);
       }
     }
+    if (fileList.length !== files.length) this.showSnack('已跳过非图片文件');
     if (fileList.length === 0) return;
     this.openEditor();
     this.setState({ files: fileList });
@@ -129,18 +151,34 @@ export default class App extends Component<Props, State> {
     {}: Props,
     { files, isEditorOpen, Compress, Batch, awaitingShareTarget }: State,
   ) {
-    const showSpinner = awaitingShareTarget || (isEditorOpen && !Compress);
+    const showSpinner =
+      awaitingShareTarget ||
+      (isEditorOpen && (files.length > 1 ? !Batch : !Compress));
+    const loadError =
+      files.length > 1 ? this.state.batchError : this.state.compressError;
 
     return (
       <div class={style.app}>
         <file-drop onfiledrop={this.onFileDrop} class={style.drop}>
           {showSpinner ? (
-            <loading-spinner class={style.appLoader} />
+            loadError ? (
+              <div class={style.loadError} role="alert">
+                <p>{loadError}</p>
+                <button onClick={() => location.reload()}>重新加载</button>
+                <button onClick={back}>返回</button>
+              </div>
+            ) : (
+              <loading-spinner class={style.appLoader} />
+            )
           ) : isEditorOpen ? (
             files.length > 1 && Batch ? (
               <Batch files={files} showSnack={this.showSnack} onBack={back} />
             ) : Compress && files.length > 0 ? (
-              <Compress files={[files[0]]} showSnack={this.showSnack} onBack={back} />
+              <Compress
+                files={[files[0]]}
+                showSnack={this.showSnack}
+                onBack={back}
+              />
             ) : null
           ) : (
             <Intro onFile={this.onIntroPickFile} showSnack={this.showSnack} />
@@ -151,5 +189,3 @@ export default class App extends Component<Props, State> {
     );
   }
 }
-
-

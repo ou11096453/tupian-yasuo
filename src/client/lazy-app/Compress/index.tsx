@@ -2,16 +2,8 @@ import { h, Component } from 'preact';
 
 import * as style from './style.css';
 import 'add-css:./style.css';
-import {
-  blobToImg,
-  blobToText,
-  builtinDecode,
-  sniffMimeType,
-  canDecodeImageType,
-  abortable,
-  assertSignal,
-  ImageMimeTypes,
-} from '../util';
+import { abortable, assertSignal, ImageMimeTypes } from '../util';
+import { decodeImage, processSvg } from '../util/image';
 import {
   PreprocessorState,
   ProcessorState,
@@ -31,7 +23,8 @@ import Results from './Results';
 import WorkerBridge from '../worker-bridge';
 import { resize } from 'features/processors/resize/client';
 import type SnackBarElement from 'shared/custom-els/snack-bar';
-import { drawableToImageData } from '../util/canvas';
+import { drawableToImageData, flattenAlpha } from '../util/canvas';
+import { readSavedSettings, saveSettings, SideSettings } from './settings';
 
 export type OutputType = EncoderType | 'identity';
 
@@ -40,11 +33,6 @@ export interface SourceImage {
   decoded: ImageData;
   preprocessed: ImageData;
   vectorImage?: HTMLImageElement;
-}
-
-interface SideSettings {
-  processorState: ProcessorState;
-  encoderState?: EncoderState;
 }
 
 interface Side {
@@ -86,42 +74,6 @@ interface SideJob {
 interface LoadingFileInfo {
   loading: boolean;
   filename?: string;
-}
-
-async function decodeImage(
-  signal: AbortSignal,
-  blob: Blob,
-  workerBridge: WorkerBridge,
-): Promise<ImageData> {
-  assertSignal(signal);
-  const mimeType = await abortable(signal, sniffMimeType(blob));
-  const canDecode = await abortable(signal, canDecodeImageType(mimeType));
-
-  try {
-    if (!canDecode) {
-      if (mimeType === 'image/avif') {
-        return await workerBridge.avifDecode(signal, blob);
-      }
-      if (mimeType === 'image/webp') {
-        return await workerBridge.webpDecode(signal, blob);
-      }
-      if (mimeType === 'image/jxl') {
-        return await workerBridge.jxlDecode(signal, blob);
-      }
-      if (mimeType === 'image/webp2') {
-        return await workerBridge.wp2Decode(signal, blob);
-      }
-      if (mimeType === 'image/qoi') {
-        return await workerBridge.qoiDecode(signal, blob);
-      }
-    }
-    // Otherwise fall through and try built-in decoding for a laugh.
-    return await builtinDecode(signal, blob);
-  } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') throw err;
-    console.log(err);
-    throw Error("无法解码图片");
-  }
 }
 
 async function preprocessImage(
@@ -179,7 +131,9 @@ async function compressImage(
   const compressedData = await encoder.encode(
     signal,
     workerBridge,
-    image,
+    encoder.meta.mimeType === 'image/jpeg'
+      ? flattenAlpha(image, '#ffffff')
+      : image,
     // The type of encodeData.options is enforced via the previous line
     encodeData.options as any,
   );
@@ -189,7 +143,8 @@ async function compressImage(
 
   return new File(
     [compressedData],
-    sourceFilename.replace(/.[^.]*$/, `.${encoder.meta.extension}`),
+    (sourceFilename.replace(/\.[^.]*$/, '') || 'image') +
+      `.${encoder.meta.extension}`,
     { type },
   );
 }
@@ -202,7 +157,7 @@ function stateForNewSourceData(state: State): State {
     const downloadUrl = state.sides[i].downloadUrl;
     if (downloadUrl) URL.revokeObjectURL(downloadUrl);
 
-    newState = cleanMerge(state, `sides.${i}`, {
+    newState = cleanMerge(newState, `sides.${i}`, {
       preprocessed: undefined,
       file: undefined,
       downloadUrl: undefined,
@@ -212,38 +167,6 @@ function stateForNewSourceData(state: State): State {
   }
 
   return newState;
-}
-
-async function processSvg(
-  signal: AbortSignal,
-  blob: Blob,
-): Promise<HTMLImageElement> {
-  assertSignal(signal);
-  // Firefox throws if you try to draw an SVG to canvas that doesn't have width/height.
-  // In Chrome it loads, but drawImage behaves weirdly.
-  // This function sets width/height if it isn't already set.
-  const parser = new DOMParser();
-  const text = await abortable(signal, blobToText(blob));
-  const document = parser.parseFromString(text, 'image/svg+xml');
-  const svg = document.documentElement!;
-
-  if (svg.hasAttribute('width') && svg.hasAttribute('height')) {
-    return blobToImg(blob);
-  }
-
-  const viewBox = svg.getAttribute('viewBox');
-  if (viewBox === null) throw Error('SVG must have width/height or viewBox');
-
-  const viewboxParts = viewBox.split(/\s+/);
-  svg.setAttribute('width', viewboxParts[2]);
-  svg.setAttribute('height', viewboxParts[3]);
-
-  const serializer = new XMLSerializer();
-  const newSource = serializer.serializeToString(document);
-  return abortable(
-    signal,
-    blobToImg(new Blob([newSource], { type: 'image/svg+xml' })),
-  );
 }
 
 /**
@@ -258,7 +181,7 @@ function processorStateEquivalent(a: ProcessorState, b: ProcessorState) {
   for (const key of Object.keys(a) as Array<keyof ProcessorState>) {
     // If both processors are disabled, they're the same.
     if (!a[key].enabled && !b[key].enabled) continue;
-    if (a !== b) return false;
+    if (a[key] !== b[key]) return false;
   }
 
   return true;
@@ -284,35 +207,24 @@ export default class Compress extends Component<Props, State> {
     source: undefined,
     loading: false,
     preprocessorState: defaultPreprocessorState,
-    // Tasking catched side settings if available otherwise taking default settings
     sides: [
-      localStorage.getItem('leftSideSettings')
-        ? {
-            ...JSON.parse(localStorage.getItem('leftSideSettings') as string),
-            loading: false,
-          }
-        : {
-            latestSettings: {
-              processorState: defaultProcessorState,
-              encoderState: undefined,
-            },
-            loading: false,
+      {
+        latestSettings: readSavedSettings(0) || {
+          processorState: defaultProcessorState,
+          encoderState: undefined,
+        },
+        loading: false,
+      },
+      {
+        latestSettings: readSavedSettings(1) || {
+          processorState: defaultProcessorState,
+          encoderState: {
+            type: 'webP',
+            options: encoderMap.webP.meta.defaultOptions,
           },
-      localStorage.getItem('rightSideSettings')
-        ? {
-            ...JSON.parse(localStorage.getItem('rightSideSettings') as string),
-            loading: false,
-          }
-        : {
-            latestSettings: {
-              processorState: defaultProcessorState,
-              encoderState: {
-                type: 'mozJPEG',
-                options: encoderMap.mozJPEG.meta.defaultOptions,
-              },
-            },
-            loading: false,
-          },
+        },
+        loading: false,
+      },
     ],
     mobileView: this.widthQuery.matches,
   };
@@ -333,7 +245,9 @@ export default class Compress extends Component<Props, State> {
     this.sourceFile = props.files[0];
     this.queueUpdateImage({ immediate: true });
 
-    import('../sw-bridge').then(({ mainAppLoaded }) => mainAppLoaded());
+    import('../sw-bridge')
+      .then(({ mainAppLoaded }) => mainAppLoaded())
+      .catch(() => {});
   }
 
   private onMobileWidthChange = () => {
@@ -389,11 +303,15 @@ export default class Compress extends Component<Props, State> {
   }
 
   componentWillUnmount(): void {
+    clearTimeout(this.updateImageTimeout);
     updateDocumentTitle({ loading: false });
     this.widthQuery.removeListener(this.onMobileWidthChange);
     this.mainAbortController.abort();
     for (const controller of this.sideAbortControllers) {
       controller.abort();
+    }
+    for (const side of this.state.sides) {
+      if (side.downloadUrl) URL.revokeObjectURL(side.downloadUrl);
     }
   }
 
@@ -418,17 +336,15 @@ export default class Compress extends Component<Props, State> {
 
   private onCopyToOtherClick = async (index: 0 | 1) => {
     const otherIndex = index ? 0 : 1;
-    const oldSettings = this.state.sides[otherIndex];
-    const newSettings = { ...this.state.sides[index] };
-
-    // Create a new object URL for the new settings. This avoids both sides sharing a URL, which
-    // means it can be safely revoked without impacting the other side.
-    if (newSettings.file) {
-      newSettings.downloadUrl = URL.createObjectURL(newSettings.file);
-    }
+    const oldSettings = this.state.sides[otherIndex].latestSettings;
+    const newSettings = this.state.sides[index].latestSettings;
 
     this.setState({
-      sides: cleanSet(this.state.sides, otherIndex, newSettings),
+      sides: cleanSet(
+        this.state.sides,
+        `${otherIndex}.latestSettings`,
+        newSettings,
+      ),
     });
 
     const result = await this.props.showSnack('设置已复制到另一侧', {
@@ -439,100 +355,42 @@ export default class Compress extends Component<Props, State> {
     if (result !== 'undo') return;
 
     this.setState({
-      sides: cleanSet(this.state.sides, otherIndex, oldSettings),
+      sides: cleanSet(
+        this.state.sides,
+        `${otherIndex}.latestSettings`,
+        oldSettings,
+      ),
     });
   };
-  /**
-   * This function saves encodedSettings and latestSettings of
-   * particular side in browser local storage
-   * @param index : (0|1)
-   * @returns
-   */
   private onSaveSideSettingsClick = async (index: 0 | 1) => {
-    if (index === 0) {
-      const leftSideSettings = JSON.stringify({
-        encodedSettings: this.state.sides[index].encodedSettings,
-        latestSettings: this.state.sides[index].latestSettings,
-      });
-      localStorage.setItem('leftSideSettings', leftSideSettings);
-      // Firing an event when we save side settings in localstorage
-      window.dispatchEvent(new CustomEvent('leftSideSettings'));
-      await this.props.showSnack('左侧设置已保存', {
-        timeout: 1500,
-        actions: ['dismiss'],
-      });
-      return;
-    }
-
-    if (index === 1) {
-      const rightSideSettings = JSON.stringify({
-        encodedSettings: this.state.sides[index].encodedSettings,
-        latestSettings: this.state.sides[index].latestSettings,
-      });
-      localStorage.setItem('rightSideSettings', rightSideSettings);
-      // Firing an event when we save side settings in localstorage
-      window.dispatchEvent(new CustomEvent('rightSideSettings'));
-      await this.props.showSnack('右侧设置已保存', {
-        timeout: 1500,
-        actions: ['dismiss'],
-      });
-      return;
-    }
+    const saved = saveSettings(index, this.state.sides[index].latestSettings);
+    await this.props.showSnack(
+      saved ? `${index === 0 ? '左' : '右'}侧设置已保存` : '无法保存设置',
+      { timeout: 3000 },
+    );
   };
 
-  /**
-   * This function sets the side state with catched localstorage
-   * value as per side index provided
-   * @param index : (0|1)
-   * @returns
-   */
   private onImportSideSettingsClick = async (index: 0 | 1) => {
-    const leftSideSettingsString = localStorage.getItem('leftSideSettings');
-    const rightSideSettingsString = localStorage.getItem('rightSideSettings');
-
-    if (index === 0 && leftSideSettingsString) {
-      const oldLeftSideSettings = this.state.sides[index];
-      const newLeftSideSettings = {
-        ...this.state.sides[index],
-        ...JSON.parse(leftSideSettingsString),
-      };
-      this.setState({
-        sides: cleanSet(this.state.sides, index, newLeftSideSettings),
-      });
-      const result = await this.props.showSnack('左侧设置已导入', {
-        timeout: 3000,
-        actions: ['undo', 'dismiss'],
-      });
-      if (result === 'undo') {
-        this.setState({
-          sides: cleanSet(this.state.sides, index, oldLeftSideSettings),
-        });
-      }
+    const settings = readSavedSettings(index);
+    if (!settings) {
+      this.props.showSnack('已保存的设置无效或不可读取', { timeout: 3000 });
       return;
     }
-
-    if (index === 1 && rightSideSettingsString) {
-      const oldRightSideSettings = this.state.sides[index];
-      const newRightSideSettings = {
-        ...this.state.sides[index],
-        ...JSON.parse(rightSideSettingsString),
-      };
+    const previous = this.state.sides[index].latestSettings;
+    this.setState({
+      sides: cleanSet(this.state.sides, `${index}.latestSettings`, settings),
+    });
+    const result = await this.props.showSnack(
+      `${index === 0 ? '左' : '右'}侧设置已导入`,
+      {
+        timeout: 3000,
+        actions: ['undo', 'dismiss'],
+      },
+    );
+    if (result === 'undo') {
       this.setState({
-        sides: cleanSet(this.state.sides, index, newRightSideSettings),
+        sides: cleanSet(this.state.sides, `${index}.latestSettings`, previous),
       });
-      const result = await this.props.showSnack(
-        '右侧设置已导入',
-        {
-          timeout: 3000,
-          actions: ['undo', 'dismiss'],
-        },
-      );
-      if (result === 'undo') {
-        this.setState({
-          sides: cleanSet(this.state.sides, index, oldRightSideSettings),
-        });
-      }
-      return;
     }
   };
 
@@ -724,8 +582,20 @@ export default class Compress extends Component<Props, State> {
         });
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return;
-        this.props.showSnack(`Source decoding error: ${err}`);
-        throw err;
+        this.setState((state) => {
+          const cleared = stateForNewSourceData(state);
+          return {
+            ...cleared,
+            source: undefined,
+            loading: false,
+            sides: cleared.sides.map((side) => ({
+              ...side,
+              loading: false,
+            })) as [Side, Side],
+          };
+        });
+        this.props.showSnack(`无法读取图片：${err}`);
+        return;
       }
     } else {
       ({ decoded, vectorImage } = currentState.source!);
@@ -783,8 +653,8 @@ export default class Compress extends Component<Props, State> {
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return;
         this.setState({ loading: false });
-        this.props.showSnack(`Pre处理错误: ${err}`);
-        throw err;
+        this.props.showSnack(`预处理错误: ${err}`);
+        return;
       }
     } else {
       source = currentState.source!;
@@ -907,13 +777,17 @@ export default class Compress extends Component<Props, State> {
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return;
         this.setState((currentState) => {
+          const url = currentState.sides[sideIndex].downloadUrl;
+          if (url) URL.revokeObjectURL(url);
           const sides = cleanMerge(currentState.sides, sideIndex, {
             loading: false,
+            file: undefined,
+            downloadUrl: undefined,
           });
           return { sides };
         });
         this.props.showSnack(`处理错误: ${err}`);
-        throw err;
+        return;
       }
     });
   }
@@ -1019,6 +893,3 @@ export default class Compress extends Component<Props, State> {
     );
   }
 }
-
-
-

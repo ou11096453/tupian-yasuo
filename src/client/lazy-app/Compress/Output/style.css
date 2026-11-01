@@ -137,7 +137,7 @@ span.zoom {
 }
 input.zoom {
   font-size: 1.2rem;
-  letter-spacing: 0.05rem;
+  letter-spacing: 0;
   font-weight: 700;
   text-indent: 3px;
   color: #fff;
@@ -147,7 +147,7 @@ input.zoom {
   margin: 0 3px 0 0;
   padding: 0 2px;
   font-size: 1.2rem;
-  letter-spacing: 0.05rem;
+  letter-spacing: 0;
   font-weight: 700;
   color: #fff;
   border-bottom: 1px dashed #999;
@@ -165,4 +165,18 @@ input.zoom {
 .pixelated {
   image-rendering: crisp-edges;
   image-rendering: pixelated;
+}
+
+@media (max-width: 799px) {
+  .button,
+  .zoom {
+    min-height: 44px;
+    height: 44px;
+  }
+  input.zoom {
+    font-size: 16px;
+  }
+  .controls {
+    padding-top: max(9px, env(safe-area-inset-top));
+  }
 }

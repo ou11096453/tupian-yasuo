@@ -21,6 +21,8 @@
 
 .options {
   position: relative;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   color: #fff;
   font-size: 1.2rem;
   max-width: 400px;
@@ -35,8 +37,25 @@
   align-self: end;
 
   @media (min-width: 600px) {
-    width: 300px;
+    width: 250px;
     margin: 0;
+  }
+}
+
+@media (min-width: 1200px) {
+  .options {
+    width: 300px;
+  }
+}
+
+@media (max-width: 599px) {
+  .options {
+    width: calc(100% - 24px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .back {
+    margin-top: max(9px, env(safe-area-inset-top));
+    margin-left: max(9px, env(safe-area-inset-left));
   }
 }
 

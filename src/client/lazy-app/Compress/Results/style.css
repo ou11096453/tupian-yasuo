@@ -28,7 +28,7 @@
   background: rgba(0, 0, 0, 0.67);
   border-radius: 5px;
   display: grid;
-  grid-template-columns: max-content [bubble] 1fr [download] max-content;
+  grid-template-columns: max-content [bubble] minmax(0, 1fr) [download] max-content;
 
   @media (min-width: 600px) {
     --download-overflow-size: 30px;
@@ -67,9 +67,12 @@
 }
 
 .file-size {
+  overflow-wrap: anywhere;
 }
 
 .bubble {
+  min-width: 0;
+  max-width: 100%;
   align-self: center;
 
   @media (min-width: 600px) {
@@ -118,6 +121,7 @@
 }
 
 .size-info {
+  min-width: 0;
   background: var(--dark-gray);
   border-radius: 19px;
   align-self: center;

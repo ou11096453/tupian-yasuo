@@ -18,6 +18,7 @@ import Select from './Select';
 import { Options as QuantOptionsComponent } from 'features/processors/quantize/client';
 import { Options as ResizeOptionsComponent } from 'features/processors/resize/client';
 import { ImportIcon, SaveIcon, SwapIcon } from 'client/lazy-app/icons';
+import { storedSettings } from '../settings';
 
 interface Props {
   index: 0 | 1;
@@ -64,8 +65,8 @@ const supportedEncoderMapP: Promise<PartialButNotUndefined<typeof encoderMap>> =
 export default class Options extends Component<Props, State> {
   state: State = {
     supportedEncoderMap: undefined,
-    leftSideSettings: localStorage.getItem('leftSideSettings'),
-    rightSideSettings: localStorage.getItem('rightSideSettings'),
+    leftSideSettings: storedSettings(0),
+    rightSideSettings: storedSettings(1),
   };
 
   constructor() {
@@ -77,13 +78,13 @@ export default class Options extends Component<Props, State> {
 
   private setLeftSideSettings = () => {
     this.setState({
-      leftSideSettings: localStorage.getItem('leftSideSettings'),
+      leftSideSettings: storedSettings(0),
     });
   };
 
   private setRightSideSettings = () => {
     this.setState({
-      rightSideSettings: localStorage.getItem('rightSideSettings'),
+      rightSideSettings: storedSettings(1),
     });
   };
 
@@ -95,7 +96,7 @@ export default class Options extends Component<Props, State> {
 
   componentWillUnmount(): void {
     window.removeEventListener('leftSideSettings', this.setLeftSideSettings);
-    window.removeEventListener('removeSideSettings', this.setRightSideSettings);
+    window.removeEventListener('rightSideSettings', this.setRightSideSettings);
   }
 
   private onEncoderTypeChange = (event: Event) => {
@@ -287,6 +288,3 @@ export default class Options extends Component<Props, State> {
     );
   }
 }
-
-
-

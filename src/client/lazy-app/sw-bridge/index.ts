@@ -60,7 +60,15 @@ export function getSharedImage(): Promise<File> {
 
 /** Set up the service worker and monitor changes */
 export async function offliner(showSnack: SnackBarElement['showSnackbar']) {
-  if (__PRODUCTION__) navigator.serviceWorker.register(swUrl);
+  if (!('serviceWorker' in navigator)) return;
+  if (__PRODUCTION__) {
+    try {
+      await navigator.serviceWorker.register(swUrl);
+    } catch {
+      showSnack('离线缓存暂时不可用');
+      return;
+    }
+  }
 
   const hasController = !!navigator.serviceWorker.controller;
 
@@ -101,12 +109,15 @@ export async function offliner(showSnack: SnackBarElement['showSnackbar']) {
  * heard about this, cache the heavier assets like codecs.
  */
 export async function mainAppLoaded() {
+  if (!('serviceWorker' in navigator)) return;
   // If the user has already interacted, no need to tell the service worker anything.
   const userInteracted = await get<boolean | undefined>('user-interacted');
   if (userInteracted) return;
-  set('user-interacted', true);
-  const serviceWorker = await getMostActiveServiceWorker();
-  if (!serviceWorker) return; // Service worker not installing yet.
+  let serviceWorker = await getMostActiveServiceWorker();
+  if (!serviceWorker && __PRODUCTION__) {
+    serviceWorker = (await navigator.serviceWorker.ready).active;
+  }
+  if (!serviceWorker) return;
   serviceWorker.postMessage('cache-all');
+  await set('user-interacted', true);
 }
-

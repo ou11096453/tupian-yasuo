@@ -20,7 +20,7 @@ export const label = 'MozJPEG';
 export const mimeType = 'image/jpeg';
 export const extension = 'jpg';
 export const defaultOptions: EncodeOptions = {
-  quality: 75,
+  quality: 90,
   baseline: false,
   arithmetic: false,
   progressive: true,
@@ -37,4 +37,3 @@ export const defaultOptions: EncodeOptions = {
   separate_chroma_quality: false,
   chroma_quality: 75,
 };
-

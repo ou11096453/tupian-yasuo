@@ -54,7 +54,7 @@ const Index: FunctionalComponent<Props> = () => (
       />
       <meta
         name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+        content="width=device-width, initial-scale=1, viewport-fit=cover"
       />
       <meta name="mobile-web-app-capable" content="yes" />
       <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -62,7 +62,7 @@ const Index: FunctionalComponent<Props> = () => (
       <link rel="apple-touch-icon" href={ogImage} />
       <meta name="theme-color" content="#ff3385" />
       <link rel="manifest" href="/manifest.json" />
-      <link rel="canonical" href={siteOrigin} />
+      {siteOrigin && <link rel="canonical" href={siteOrigin} />}
       <style
         dangerouslySetInnerHTML={{ __html: escapeStyleScriptContent(baseCss) }}
       />
@@ -109,9 +109,3 @@ const Index: FunctionalComponent<Props> = () => (
 );
 
 export default Index;
-
-
-
-
-
-

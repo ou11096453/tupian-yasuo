@@ -1,8 +1,11 @@
 .select {
   position: relative;
+  min-width: 0;
 }
 
 .builtin-select {
+  box-sizing: border-box;
+  min-width: 0;
   background: var(--black);
   border-radius: 4px;
   font: inherit;

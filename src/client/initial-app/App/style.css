@@ -10,7 +10,7 @@
 
 .drop {
   overflow: hidden;
-  touch-action: none;
+  touch-action: auto;
   height: 100%;
   width: 100%;
 
@@ -65,4 +65,28 @@
   transform: translate(-50%, -50%);
   --size: 225px;
   --stroke-width: 26px;
+}
+
+.load-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-content: center;
+  justify-content: center;
+  padding: 24px;
+  background: #f5f6f7;
+  font-size: 16px;
+  p {
+    flex-basis: 100%;
+    text-align: center;
+  }
+  button {
+    min-height: 44px;
+    padding: 10px 20px;
+    border: 1px solid #bd2458;
+    border-radius: 6px;
+    cursor: pointer;
+  }
 }

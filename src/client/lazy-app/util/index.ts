@@ -144,9 +144,20 @@ export async function builtinDecode(
   // Prefer createImageBitmap as it's the off-thread option for Firefox.
   const drawable = await abortable<HTMLImageElement | ImageBitmap>(
     signal,
-    'createImageBitmap' in self ? createImageBitmap(blob) : blobToImg(blob),
+    ('createImageBitmap' in self
+      ? createImageBitmap(blob)
+      : blobToImg(blob)
+    ).then((drawable) => {
+      if (signal.aborted && 'close' in drawable) drawable.close();
+      assertSignal(signal);
+      return drawable;
+    }),
   );
-  return drawableToImageData(drawable);
+  try {
+    return drawableToImageData(drawable);
+  } finally {
+    if ('close' in drawable) drawable.close();
+  }
 }
 
 /**
@@ -282,12 +293,14 @@ export async function abortable<T>(
   promise: Promise<T>,
 ): Promise<T> {
   assertSignal(signal);
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      signal.addEventListener('abort', () =>
-        reject(new DOMException('AbortError', 'AbortError')),
-      );
-    }),
-  ]);
+  let onAbort: () => void;
+  const aborted = new Promise<T>((_, reject) => {
+    onAbort = () => reject(new DOMException('AbortError', 'AbortError'));
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([promise, aborted]);
+  } finally {
+    signal.removeEventListener('abort', onAbort!);
+  }
 }

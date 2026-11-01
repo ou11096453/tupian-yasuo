@@ -19,7 +19,7 @@ export const mimeType = 'image/webp';
 export const extension = 'webp';
 // These come from struct WebPConfig in encode.h.
 export const defaultOptions: EncodeOptions = {
-  quality: 75,
+  quality: 90,
   target_size: 0,
   target_PSNR: 0,
   method: 4,
@@ -47,4 +47,3 @@ export const defaultOptions: EncodeOptions = {
   use_delta_palette: 0,
   use_sharp_yuv: 0,
 };
-

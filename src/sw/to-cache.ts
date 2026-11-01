@@ -1,7 +1,6 @@
-import { simd } from 'wasm-feature-detect';
+import { simd, threads } from 'wasm-feature-detect';
 import webpDataUrl from 'data-url:./tiny.webp';
 import avifDataUrl from 'data-url:./tiny.avif';
-import checkThreadsSupport from 'worker-shared/supports-wasm-threads';
 
 // Give TypeScript the correct global.
 declare var self: ServiceWorkerGlobalScope;
@@ -16,6 +15,7 @@ function subtractSets<T extends any>(set1: Set<T>, set2: Set<T>): Set<T> {
 import * as initialApp from 'entry-data:client/initial-app';
 import swUrl from 'service-worker:sw';
 import * as compress from 'entry-data:client/lazy-app/Compress';
+import * as batch from 'entry-data:client/lazy-app/Batch';
 import * as swBridge from 'entry-data:client/lazy-app/sw-bridge';
 
 // The processors and codecs
@@ -55,6 +55,8 @@ export function shouldCacheDynamically(url: string) {
 let initialJs = new Set([
   compress.main,
   ...compress.deps,
+  batch.main,
+  ...batch.deps,
   swBridge.main,
   ...swBridge.deps,
 ]);
@@ -82,14 +84,18 @@ export const initial = ['/', ...initialJs];
 export const theRest = (async () => {
   const [supportsThreads, supportsSimd, supportsWebP, supportsAvif] =
     await Promise.all([
-      checkThreadsSupport(),
+      // Service workers cannot create nested workers; codec workers can.
+      threads(),
       simd(),
       ...[webpDataUrl, avifDataUrl].map(async (dataUrl) => {
         if (!self.createImageBitmap) return false;
         const response = await fetch(dataUrl);
         const blob = await response.blob();
         return createImageBitmap(blob).then(
-          () => true,
+          (bitmap) => {
+            bitmap.close();
+            return true;
+          },
           () => false,
         );
       }),
@@ -107,26 +113,23 @@ export const theRest = (async () => {
   if (!supportsWebP) addWithDeps(webpDec);
 
   // AVIF
+  addWithDeps(avifEnc);
   if (supportsThreads) {
     addWithDeps(avifEncMt);
-  } else {
-    addWithDeps(avifEnc);
   }
 
   // JXL
+  addWithDeps(jxlEnc);
   if (supportsThreads && supportsSimd) {
     addWithDeps(jxlEncMtSimd);
   } else if (supportsThreads) {
     addWithDeps(jxlEncMt);
-  } else {
-    addWithDeps(jxlEnc);
   }
 
   // OXI
+  addWithDeps(oxi);
   if (supportsThreads) {
     addWithDeps(oxiMt);
-  } else {
-    addWithDeps(oxi);
   }
 
   // WebP
@@ -137,15 +140,12 @@ export const theRest = (async () => {
   }
 
   // WP2
+  addWithDeps(wp2Enc);
   if (supportsThreads && supportsSimd) {
     addWithDeps(wp2EncMtSimd);
   } else if (supportsThreads) {
     addWithDeps(wp2EncMt);
-  } else {
-    addWithDeps(wp2Enc);
   }
 
   return [...new Set(items)];
 })();
-
-

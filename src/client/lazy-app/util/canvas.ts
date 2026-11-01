@@ -83,8 +83,31 @@ export function drawableToImageData(
   // Draw image onto canvas
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Could not create canvas context');
-  ctx.drawImage(drawable, sx, sy, sw, sh, 0, 0, width, height);
-  return ctx.getImageData(0, 0, width, height);
+  try {
+    ctx.drawImage(drawable, sx, sy, sw, sh, 0, 0, width, height);
+    return ctx.getImageData(0, 0, width, height);
+  } finally {
+    canvas.width = 1;
+    canvas.height = 1;
+  }
+}
+
+export function flattenAlpha(data: ImageData, background: string): ImageData {
+  const canvas = document.createElement('canvas');
+  canvas.width = data.width;
+  canvas.height = data.height;
+  try {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('无法创建画布');
+    ctx.putImageData(data, 0, 0);
+    ctx.globalCompositeOperation = 'destination-over';
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return ctx.getImageData(0, 0, canvas.width, canvas.height);
+  } finally {
+    canvas.width = 1;
+    canvas.height = 1;
+  }
 }
 
 export type BuiltinResizeMethod = 'pixelated' | 'low' | 'medium' | 'high';
@@ -116,8 +139,13 @@ export function builtinResize(
     ctx.imageSmoothingQuality = method;
   }
 
-  ctx.drawImage(canvasSource, sx, sy, sw, sh, 0, 0, dw, dh);
-  return ctx.getImageData(0, 0, dw, dh);
+  try {
+    ctx.drawImage(canvasSource, sx, sy, sw, sh, 0, 0, dw, dh);
+    return ctx.getImageData(0, 0, dw, dh);
+  } finally {
+    canvasSource.width = canvasSource.height = 1;
+    canvasDest.width = canvasDest.height = 1;
+  }
 }
 
 /**
